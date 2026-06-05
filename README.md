@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Resume ATS Intelligence Platform
 
 A FastAPI-based resume analysis system with rule-based ATS scoring, LLM suggestions, and FAISS-powered RAG chat.
@@ -49,3 +50,6 @@ Upload → Extract Text → Rule-Based ATS → LLM Suggestions → FAISS Index
                                                                   ↓
                                                         RAG Chat (streamed)
 ```
+=======
+# ATS-Application
+>>>>>>> ddb99d311231fe091fca7470de5b10c3d7baab8c
