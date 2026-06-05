@@ -1,0 +1,10 @@
+venv/
+.env
+__pycache__/
+*.pyc
+*.pyo
+.vscode/
+.DS_Store  
+.python-version
+*.log
+.pytest_cache/
