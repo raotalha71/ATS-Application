@@ -1,12 +1,14 @@
-<<<<<<< HEAD
-# Resume ATS Intelligence Platform
+# ATS-Application
+
+Resume ATS Intelligence Platform.
 
 A FastAPI-based resume analysis system with rule-based ATS scoring, LLM suggestions, and FAISS-powered RAG chat.
 
 ## Stack
+
 - **FastAPI** — REST API
-- **FAISS** — In-memory vector store (per resume)
-- **Mistral 7B via Ollama** — LLM for suggestions + RAG chat (streamed)
+- **FAISS** — In-memory vector store per resume
+- **Mistral 7B via Ollama** — LLM for suggestions and RAG chat
 - **PyMuPDF** — PDF text extraction
 - **sentence-transformers** — Embeddings for FAISS
 - **uv** — Package management
@@ -26,7 +28,7 @@ uv pip install -r requirements.txt
 cp .env.example .env
 # Edit .env — set USE_OLLAMA=true for local Mistral, or add API key
 
-# Run Ollama (separate terminal)
+# Run Ollama in a separate terminal
 ollama run mistral
 
 # Start server
@@ -45,10 +47,13 @@ uvicorn app.main:app --reload --port 8000
 
 ## Architecture
 
-```
-Upload → Extract Text → Rule-Based ATS → LLM Suggestions → FAISS Index
-                                                                  ↓
-                                                        RAG Chat (streamed)
+```mermaid
+flowchart LR
+    A[Upload] --> B[Extract Text]
+    B --> C[Rule-Based ATS]
+    C --> D[LLM Suggestions]
+    D --> E[FAISS Index]
+    E --> F[RAG Chat]
 ```
 =======
 # ATS-Application
