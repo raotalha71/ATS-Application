@@ -2,6 +2,7 @@ import streamlit as st
 import requests
 import re
 import time
+import os
 
 # ── Page Config ────────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -280,7 +281,7 @@ hr { border-color: rgba(255,255,255,0.07) !important; }
 """, unsafe_allow_html=True)
 
 # ── Constants ──────────────────────────────────────────────────────────────────
-API_BASE = "http://localhost:8000/api"
+API_BASE = os.getenv("API_BASE_URL", "http://localhost:8000/api")
 
 # ── Session State Init ─────────────────────────────────────────────────────────
 for key, default in {
@@ -341,6 +342,7 @@ def render_category_bars(categories: dict):
         "sections":       ("#818cf8", 15),
         "action_verbs":   ("#f472b6", 15),
         "keyword_match":  ("#fbbf24", 25),
+        "role_match":     ("#fb7185", 100),
         "quantification": ("#34d399", 20),
         "formatting":     ("#60a5fa", 15),
     }
@@ -349,6 +351,7 @@ def render_category_bars(categories: dict):
         "sections":       "Sections",
         "action_verbs":   "Action Verbs",
         "keyword_match":  "Keyword Match",
+        "role_match":     "Role Match",
         "quantification": "Quantification",
         "formatting":     "Formatting",
     }
@@ -517,6 +520,8 @@ with tab_upload:
                     st.success(
                         f"✅ Resume analyzed! **{result['filename']}** — "
                         f"Score: **{result['ats_score']}/100** ({result['grade']}) — "
+                        f"Role Match: **{result.get('role_match_score', 0)}/100** "
+                        f"({result.get('role_match_verdict', 'Not evaluated')}) — "
                         f"{result['total_chunks_indexed']} chunks indexed"
                     )
 

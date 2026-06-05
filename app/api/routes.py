@@ -90,6 +90,8 @@ async def upload_resume(
         "candidate_name": candidate_name,
         "ats_score": ats_report.total_score,
         "grade": ats_report.grade,
+        "role_match_score": ats_report.role_match_score,
+        "role_match_verdict": ats_report.role_match_verdict,
         "sections_missing": ats_report.sections_missing,
         "validation": {
             "is_resume": is_resume,

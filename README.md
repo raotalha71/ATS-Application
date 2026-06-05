@@ -35,6 +35,18 @@ ollama run mistral
 uvicorn app.main:app --reload --port 8000
 ```
 
+## Docker
+
+```bash
+# Build and run the full stack
+docker compose up --build
+
+# Pull the Ollama model once inside the ollama container
+docker compose exec ollama ollama pull mistral
+```
+
+The API will run on `http://localhost:8000`, and the Streamlit UI will run on `http://localhost:8501`.
+
 ## Endpoints
 
 | Method | Route | Description |

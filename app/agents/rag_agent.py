@@ -1,8 +1,10 @@
 
 
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Literal
 from app.core.llm_client import llm_stream
 from app.core.store import get_resume, ResumeRecord
+
+QuestionRoute = Literal["job_match", "ats", "improvements", "cv", "out_of_scope"]
 
 
 def is_job_match_question(question: str) -> bool:
@@ -37,8 +39,46 @@ def is_job_match_question(question: str) -> bool:
         "irrelevant",
         "for this role",
         "for the role",
+        "job is for",
+        "role is for",
+        "position is for",
+        "good for",
+        "good even if",
     ]
     return any(keyword in q for keyword in keywords)
+
+
+def classify_question(question: str) -> QuestionRoute:
+    """Route resume-chat questions to the right evidence source."""
+    q = question.lower()
+
+    if is_job_match_question(question):
+        return "job_match"
+
+    improvement_terms = [
+        "improve", "improvement", "suggestion", "suggest", "better reach",
+        "change", "fix", "rewrite", "make it better", "optimize",
+    ]
+    if any(term in q for term in improvement_terms):
+        return "improvements"
+
+    ats_terms = [
+        "ats", "score", "weak", "weakness", "not good", "bad", "keyword",
+        "missing", "format", "formatting", "section", "why is this cv",
+        "why this cv", "why is this resume", "why this resume",
+    ]
+    if any(term in q for term in ats_terms):
+        return "ats"
+
+    cv_terms = [
+        "cv", "resume", "candidate", "person", "background", "experience",
+        "skill", "education", "project", "certification", "contact",
+        "summary", "profile", "work", "job title", "degree",
+    ]
+    if any(term in q for term in cv_terms):
+        return "cv"
+
+    return "out_of_scope"
 
 
 def build_job_match_response(record: ResumeRecord) -> str:
@@ -65,15 +105,18 @@ def build_job_match_response(record: ResumeRecord) -> str:
     categories = ats.get("categories", {})
     findings = ats.get("findings", {})
     keyword_match = categories.get("keyword_match", {})
+    role_match = categories.get("role_match", {})
     match_pct = float(keyword_match.get("match_pct", 0.0))
+    role_score = int(role_match.get("score", round(match_pct)))
+    role_verdict = role_match.get("verdict", "")
     total_score = int(ats.get("total_score", 0))
     grade = ats.get("grade", "")
 
-    if match_pct >= 70:
+    if role_score >= 70:
         decision = "Yes - shortlist this candidate."
         verdict = "strong role match"
         reason = "The CV shares enough required job-description keywords to justify moving forward."
-    elif match_pct >= 45:
+    elif role_score >= 45:
         decision = "Maybe - review manually before shortlisting."
         verdict = "partial role match"
         reason = "There is some overlap, but important job requirements are still missing."
@@ -94,8 +137,12 @@ def build_job_match_response(record: ResumeRecord) -> str:
     response_lines = [
         f"Hiring verdict: {decision}",
         f"Role alignment: {verdict}. {reason}",
-        f"ATS score: {total_score}/100 ({grade}). Job-description keyword match: {match_pct:.1f}%.",
+        f"Resume quality score: {total_score}/100 ({grade}). Role match score: {role_score}/100.",
+        f"Job-description keyword match: {match_pct:.1f}%.",
     ]
+
+    if role_verdict:
+        response_lines.append(f"Stored role verdict: {role_verdict}.")
 
     if matched_keywords:
         response_lines.append(f"Matched keywords: {', '.join(matched_keywords)}.")
@@ -110,7 +157,7 @@ def build_job_match_response(record: ResumeRecord) -> str:
     return " ".join(response_lines)
 
 
-def build_rag_prompt(question: str, context: str) -> str:
+def build_rag_prompt(question: str, context: str, route: QuestionRoute) -> str:
     """
     Builds RAG prompt. Context is pre-formatted chunks from FAISS.
     System instruction keeps answers grounded — no hallucination.
@@ -127,6 +174,8 @@ STRICT RULES:
 4. If the question is about improvements — answer from IMPROVEMENT SUGGESTIONS section.
 5. If the context doesn't contain enough info to answer, say: "I don't have enough information in this resume's data to answer that."
 6. Be concise and direct. No unnecessary filler.
+
+QUESTION ROUTE: {route}
 
 CONTEXT:
 {context}
@@ -172,7 +221,21 @@ async def rag_chat_stream(
         yield build_job_match_response(record)
         return
 
+    route = classify_question(question)
+    if route == "out_of_scope":
+        yield (
+            "I can only answer questions about this uploaded CV, its ATS analysis, improvement suggestions, "
+            "or its fit for the provided job description."
+        )
+        return
+
     from app.utils.vectorstore import retrieve_chunks, format_context_for_prompt
+
+    allowed_types_by_route = {
+        "ats": {"ats"},
+        "improvements": {"suggestions", "ats"},
+        "cv": {"cv"},
+    }
 
     # Retrieve top-K relevant chunks from FAISS
     retrieved = retrieve_chunks(
@@ -180,7 +243,7 @@ async def rag_chat_stream(
         faiss_index=record.faiss_index,
         all_chunks=record.chunks,
         chunk_metadata=record.chunk_metadata,
-        allowed_types={"cv"},
+        allowed_types=allowed_types_by_route.get(route, {"cv"}),
     )
 
     if not retrieved:
@@ -191,7 +254,7 @@ async def rag_chat_stream(
     context = format_context_for_prompt(retrieved)
 
     # Build RAG prompt
-    prompt = build_rag_prompt(question, context)
+    prompt = build_rag_prompt(question, context, route)
 
     # Stream LLM response token by token
     async for token in llm_stream(prompt):

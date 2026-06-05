@@ -33,6 +33,7 @@ RULES:
 ATS FINDINGS:
 - Job description context: {jd_context}
 - Total Score: {r.total_score}/100 (Grade: {r.grade})
+- Role Match: {r.role_match_score}/100 ({r.role_match_verdict})
 - Missing sections: {r.sections_missing if r.sections_missing else 'None'}
 - Weak verbs found: {r.weak_verbs_found[:8] if r.weak_verbs_found else 'None'}
 - Missing keywords (vs job description): {r.missing_keywords[:10] if r.missing_keywords else 'None — no JD provided'}

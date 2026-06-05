@@ -1,4 +1,4 @@
-from app.agents.rag_agent import build_job_match_response, is_job_match_question
+from app.agents.rag_agent import build_job_match_response, classify_question, is_job_match_question
 from app.core.store import ResumeRecord
 
 
@@ -6,7 +6,15 @@ def test_match_question_detection():
     assert is_job_match_question("Does this CV match the job description?") is True
     assert is_job_match_question("Should this person be given the job?") is True
     assert is_job_match_question("Should we hire this candidate for the role?") is True
+    assert is_job_match_question("Is this person good even if the job is for graphic designer?") is True
     assert is_job_match_question("What skills does this person have?") is False
+
+
+def test_question_router():
+    assert classify_question("Why is this CV not good?") == "ats"
+    assert classify_question("What improvements should I make?") == "improvements"
+    assert classify_question("What skills does this person have?") == "cv"
+    assert classify_question("What is the capital of France?") == "out_of_scope"
 
 
 def test_job_match_response_uses_ats_data():
@@ -20,6 +28,7 @@ def test_job_match_response_uses_ats_data():
             "grade": "B — Good",
             "categories": {
                 "keyword_match": {"match_pct": 60.0},
+                "role_match": {"score": 60, "verdict": "Partial match - manual review"},
             },
             "findings": {
                 "matched_keywords": ["python", "aws"],
@@ -51,6 +60,7 @@ def test_job_match_response_rejects_low_role_alignment():
             "grade": "F - Needs Major Rework",
             "categories": {
                 "keyword_match": {"match_pct": 8.0},
+                "role_match": {"score": 8, "verdict": "Poor match - do not shortlist"},
             },
             "findings": {
                 "matched_keywords": ["designer"],
@@ -66,6 +76,7 @@ def test_job_match_response_rejects_low_role_alignment():
 
     assert "No - do not shortlist this candidate for this role" in response
     assert "poor role match" in response
+    assert "Role match score: 8/100" in response
     assert "strong CV in a different field is still not a fit" in response
 
 

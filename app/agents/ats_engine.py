@@ -132,6 +132,8 @@ class ATSReport:
     matched_keywords: list = field(default_factory=list)
     missing_keywords: list = field(default_factory=list)
     keyword_match_pct: float = 0.0
+    role_match_score: int = 0
+    role_match_verdict: str = "No job description provided"
     quantified_lines: int = 0
     total_bullet_lines: int = 0
     formatting_warnings: list = field(default_factory=list)
@@ -154,7 +156,8 @@ class ATSReport:
             f"  Quantification:    {self.quantification_score}/20",
             f"  Formatting:        {self.formatting_score}/15",
             f"",
-            f"ROLE ALIGNMENT: {self.keyword_match_pct:.1f}% job-description keyword match",
+            f"ROLE ALIGNMENT: {self.role_match_score}/100 ({self.role_match_verdict})",
+            f"JOB-DESCRIPTION KEYWORD MATCH: {self.keyword_match_pct:.1f}%",
             f"CONTACT FINDINGS: {self.contact_findings}",
             f"SECTIONS FOUND: {[k for k,v in self.sections_found.items() if v]}",
             f"SECTIONS MISSING: {self.sections_missing}",
@@ -177,6 +180,11 @@ class ATSReport:
                 "action_verbs": {"score": self.action_verb_score, "max": 15},
                 "keyword_match": {"score": self.keyword_score, "max": 25,
                                   "match_pct": self.keyword_match_pct},
+                "role_match": {
+                    "score": self.role_match_score,
+                    "max": 100,
+                    "verdict": self.role_match_verdict,
+                },
                 "quantification": {"score": self.quantification_score, "max": 20},
                 "formatting": {"score": self.formatting_score, "max": 15},
             },
@@ -403,6 +411,7 @@ class ATSEngine:
         report.sections_score, report.sections_found, report.sections_missing = self._check_sections(resume_text)
         report.action_verb_score, report.strong_verbs_found, report.weak_verbs_found = self._check_action_verbs(resume_text)
         report.keyword_score, report.matched_keywords, report.missing_keywords, report.keyword_match_pct = self._check_keywords(resume_text, job_description)
+        report.role_match_score, report.role_match_verdict = self._role_match(report.keyword_match_pct, job_description)
         report.quantification_score, report.quantified_lines, report.total_bullet_lines = self._check_quantification(resume_text)
         report.formatting_score, report.formatting_warnings = self._check_formatting(resume_text)
 
@@ -420,6 +429,24 @@ class ATSEngine:
         report.grade = self._grade(report.total_score)
 
         return report
+
+    def _role_match(self, keyword_match_pct: float, job_description: str) -> tuple[int, str]:
+        """
+        Separate job fit from resume quality.
+        A polished resume can still be a poor match for the submitted job.
+        """
+        if not job_description.strip():
+            return 0, "No job description provided"
+
+        score = max(0, min(int(round(keyword_match_pct)), 100))
+        if score >= 70:
+            verdict = "Strong match - shortlist"
+        elif score >= 45:
+            verdict = "Partial match - manual review"
+        else:
+            verdict = "Poor match - do not shortlist"
+
+        return score, verdict
 
     def _grade(self, score: int) -> str:
         if score >= 85: return "A — Excellent"

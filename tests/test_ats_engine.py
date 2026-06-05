@@ -66,6 +66,8 @@ def test_keyword_match():
     report = engine.score(SAMPLE_RESUME, SAMPLE_JD)
     assert report.keyword_match_pct > 0
     assert len(report.matched_keywords) > 0
+    assert report.role_match_score == round(report.keyword_match_pct)
+    assert report.role_match_verdict != ""
 
 
 def test_no_jd_gives_neutral_score():
@@ -86,3 +88,4 @@ def test_ats_report_to_dict():
     assert "total_score" in d
     assert "categories" in d
     assert "findings" in d
+    assert "role_match" in d["categories"]

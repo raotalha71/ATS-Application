@@ -1,10 +1,13 @@
 
 from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
 from functools import lru_cache
 
 
 class Settings(BaseSettings):
-    # LLM provider toggle
+    # LLM provider: "ollama", "openai", or "anthropic".
+    # USE_OLLAMA is kept for older .env files; LLM_PROVIDER takes priority.
+    llm_provider: str = ""
     use_ollama: bool = True
 
     # Ollama (local Mistral 7B)
@@ -32,9 +35,15 @@ class Settings(BaseSettings):
     # Embedding model (local, no key needed)
     embedding_model: str = "all-MiniLM-L6-v2"
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
+    model_config = ConfigDict(env_file=".env", case_sensitive=False)
+
+    @property
+    def active_llm_provider(self) -> str:
+        """Return the configured provider while preserving USE_OLLAMA compatibility."""
+        provider = (self.llm_provider or "").strip().lower()
+        if provider:
+            return provider
+        return "ollama" if self.use_ollama else "openai"
 
 
 @lru_cache()
