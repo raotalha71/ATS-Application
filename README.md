@@ -55,6 +55,3 @@ flowchart LR
     D --> E[FAISS Index]
     E --> F[RAG Chat]
 ```
-=======
-# ATS-Application
->>>>>>> ddb99d311231fe091fca7470de5b10c3d7baab8c
