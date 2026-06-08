@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     app_host: str = "0.0.0.0"
     app_port: int = 8000
     max_upload_size_mb: int = 10
+    storage_dir: str = "storage"
 
     # FAISS / chunking
     faiss_top_k: int = 3
